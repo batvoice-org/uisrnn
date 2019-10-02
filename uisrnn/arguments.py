@@ -159,6 +159,11 @@ def parse_arguments():
       type=float,
       help='Max norm of the gradient.')
   training_parser.add_argument(
+      '--utterance_maxlen',
+      default=40,
+      type=int,
+      help='Max len of utterance, in number of embeddings (One embedding = 360 ms with default settings).')
+  training_parser.add_argument(
       '--enforce_cluster_id_uniqueness',
       default=True,
       type=str2bool,

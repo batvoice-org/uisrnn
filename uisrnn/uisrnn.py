@@ -14,6 +14,7 @@
 """The UIS-RNN model."""
 
 import numpy as np
+import os
 import torch
 from torch import autograd
 from torch import nn
@@ -148,7 +149,10 @@ class UISRNN:
     Args:
       filepath: the path of the file.
     """
-    var_dict = torch.load(filepath)
+    if torch.cuda.is_available():
+      var_dict = torch.load(filepath)
+    else:
+      var_dict = torch.load(filepath,map_location=torch.device('cpu'))
     self.rnn_model.load_state_dict(var_dict['rnn_state_dict'])
     self.rnn_init_hidden = nn.Parameter(
         torch.from_numpy(var_dict['rnn_init_hidden']).to(self.device))
@@ -164,6 +168,90 @@ class UISRNN:
         'rnn_init_hidden={}'.format(
             self.transition_bias, self.crp_alpha, var_dict['sigma2'],
             var_dict['rnn_init_hidden']))
+
+  def fit_concatenated_lowmemory(self, train_data_repo, set_ids, args, savefile=None):
+    self.rnn_model.train()
+    optimizer = self._get_optimizer(optimizer=args.optimizer,
+                                    learning_rate=args.learning_rate)
+
+    if args.batch_size is None:
+      raise ValueError('Fitting with low memory requires to specify a batch size')
+    if args.utterance_maxlen is None:
+      raise ValueError('Fitting with low memory requires to specify a max. utterance len')
+
+    train_loss = []
+    best_likelihood = None
+    for num_iter in range(args.train_iteration):
+      optimizer.zero_grad()
+      # Let's pack a subset in each iteration.
+      packed_train_sequence, rnn_truth = utils.pack_sequence_lowmemory(
+          train_data_repo,
+          set_ids,
+          args.batch_size,
+          args.utterance_maxlen,
+          self.observation_dim,
+          self.device)
+
+      hidden = self.rnn_init_hidden.repeat(1, args.batch_size, 1)
+      mean, _ = self.rnn_model(packed_train_sequence, hidden)
+      # use mean to predict
+      mean = torch.cumsum(mean, dim=0)
+      mean_size = mean.size()
+      mean = torch.mm(
+          torch.diag(
+              1.0 / torch.arange(1, mean_size[0] + 1).float().to(self.device)),
+          mean.view(mean_size[0], -1))
+      mean = mean.view(mean_size)
+
+      # Likelihood part.
+      loss1 = loss_func.weighted_mse_loss(
+          input_tensor=(rnn_truth != 0).float() * mean[:-1, :, :],
+          target_tensor=rnn_truth,
+          weight=1 / (2 * self.sigma2))
+
+      # Sigma2 prior part.
+      weight = (((rnn_truth != 0).float() * mean[:-1, :, :] - rnn_truth)
+                ** 2).view(-1, self.observation_dim)
+      num_non_zero = torch.sum((weight != 0).float(), dim=0).squeeze()
+      loss2 = loss_func.sigma2_prior_loss(
+          num_non_zero, args.sigma_alpha, args.sigma_beta, self.sigma2)
+
+      # Regularization part.
+      loss3 = loss_func.regularization_loss(
+          self.rnn_model.parameters(), args.regularization_weight)
+
+      loss = loss1 + loss2 + loss3
+      loss.backward()
+      nn.utils.clip_grad_norm_(self.rnn_model.parameters(), args.grad_max_norm)
+      optimizer.step()
+      # avoid numerical issues
+      self.sigma2.data.clamp_(min=1e-6)
+
+      # Let's backup at best step
+      new_likelihood = float(loss1.data)
+      if ((best_likelihood is not None) and (new_likelihood < best_likelihood) and (savefile is not None)):
+        self.logger.print(2,'OVERWRITING_MODEL_AT_ITER_' + str(num_iter))
+        self.save(savefile)
+      if ((best_likelihood is None) or (new_likelihood < best_likelihood)):
+        best_likelihood = new_likelihood
+
+      if (np.remainder(num_iter, 10) == 0 or
+          num_iter == args.train_iteration - 1):
+        self.logger.print(
+            2,
+            'Iter: {:d}  \t'
+            'Training Loss: {:.4f}    \n'
+            '    Negative Log Likelihood: {:.4f}\t'
+            'Sigma2 Prior: {:.4f}\t'
+            'Regularization: {:.4f}'.format(
+                num_iter,
+                float(loss.data),
+                float(loss1.data),
+                float(loss2.data),
+                float(loss3.data)))
+      train_loss.append(float(loss1.data))  # only save the likelihood part
+    self.logger.print(
+        1, 'Done training with {} iterations'.format(args.train_iteration))
 
   def fit_concatenated(self, train_sequence, train_cluster_id, args):
     """Fit UISRNN model to concatenated sequence and cluster_id.
@@ -308,6 +396,53 @@ class UISRNN:
     self.logger.print(
         1, 'Done training with {} iterations'.format(args.train_iteration))
 
+  def fit_lowmemory(self, train_data_repo, train_cluster_ids, args, savefile=None):
+    """Fit UISRNN model, avoiding to load whole dataset in memory
+
+    Args:
+      train_data_repo: path to a directory where training data are stored
+        (one .npy file per speaker id, filename = cluster_id).
+        Currently not compatible with situations where global uniqueness
+        needs to be enforced
+        
+      train_cluster_ids: Ground truth labels for train_sequences:
+
+        Train_sequences is a list of the same size than train_data_repo,
+        each element being a 1-dim list or numpy array of strings.
+
+      args: Training configurations. See `arguments.py` for details.
+
+    Raises:
+      TypeError: If train_data_repo or train_cluster_ids is of wrong type.
+      ValueError: If train_data_repo does not exist
+    """
+    if isinstance(train_data_repo, type('str')):
+      # Must be a path
+      if not os.path.exists(train_data_repo):
+        raise ValueError('given training data path does not exist')
+    else:
+      raise TypeError('train_data_repo must be a string representing a path')
+
+    # estimate transition_bias
+    if self.estimate_transition_bias:
+      (transition_bias,
+       transition_bias_denominator) = utils.estimate_transition_bias(
+           train_cluster_ids)
+      # set or update transition_bias
+      if self.transition_bias is None:
+        self.transition_bias = transition_bias
+        self.transition_bias_denominator = transition_bias_denominator
+      else:
+        self.transition_bias = (
+            self.transition_bias * self.transition_bias_denominator +
+            transition_bias * transition_bias_denominator) / (
+                self.transition_bias_denominator + transition_bias_denominator)
+        self.transition_bias_denominator += transition_bias_denominator
+
+    all_ids = set([lid for lidlist in train_cluster_ids for lid in lidlist])
+    all_available_ids = set([x[0:-4] for x in os.listdir(train_data_repo)])
+    self.fit_concatenated_lowmemory(train_data_repo, all_ids.intersection(all_available_ids), args, savefile)
+  
   def fit(self, train_sequences, train_cluster_ids, args):
     """Fit UISRNN model.
 

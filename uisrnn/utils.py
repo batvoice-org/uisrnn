@@ -17,6 +17,7 @@ import random
 import string
 
 import numpy as np
+import os
 import torch
 from torch import autograd
 
@@ -217,6 +218,40 @@ def resize_sequence(sequence, cluster_id, num_permutations=None):
       seq_lengths.append(len(idx_set[0]) + 1)
   return sub_sequences, seq_lengths
 
+def get_one_utter(savepath, truncate_at):
+  spkdata = np.load(savepath,allow_pickle=True)
+  chosen_utterance = spkdata[np.random.choice(len(spkdata),1)[0]]
+  possible_startpoints = chosen_utterance.shape[0] - truncate_at
+  if possible_startpoints > 1:
+    chosen_utterance = chosen_utterance[np.random.choice(possible_startpoints,1)[0]:,:]
+  return chosen_utterance
+
+def pack_sequence_lowmemory(train_data_repo, set_ids, batch_size, utterance_maxlen, observation_dim, device):
+  lids = list(set_ids)
+  num_clusters = len(set_ids)
+  
+  chosen_speakers = np.random.choice(num_clusters, batch_size)
+  lists_utter = []
+  lengs_utter = []
+  m_utter_len = -1
+  for one_speaker in chosen_speakers:
+      data = get_one_utter(os.path.join(train_data_repo,lids[one_speaker] + '.npy'),utterance_maxlen)
+      lists_utter.append(data)
+      lengs_utter.append(data.shape[0] + 1)
+  
+  sorted_seq_lengths = np.sort(lengs_utter)[::-1]
+  permute_index = np.argsort(lengs_utter)[::-1]
+  
+  rnn_input = np.zeros((sorted_seq_lengths[0], batch_size, observation_dim))
+  for i in range(batch_size):
+    rnn_input[1:sorted_seq_lengths[i],i,:] = lists_utter[permute_index[i]]
+  rnn_input = autograd.Variable(torch.from_numpy(rnn_input).float()).to(device)
+  sorted_seq_lengths_copy = sorted_seq_lengths.copy()
+  packed_rnn_input = torch.nn.utils.rnn.pack_padded_sequence(rnn_input, sorted_seq_lengths_copy, batch_first=False)
+  
+  # ground truth is the shifted input
+  rnn_truth = rnn_input[1:, :, :]
+  return packed_rnn_input, rnn_truth
 
 def pack_sequence(
     sub_sequences, seq_lengths, batch_size, observation_dim, device):
