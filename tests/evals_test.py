@@ -15,7 +15,7 @@
 import random
 import unittest
 
-from uisrnn import evals
+from bv_uisrnn import evals
 
 
 class TestComputeSequenceMatchAccuracy(unittest.TestCase):

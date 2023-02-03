@@ -15,7 +15,7 @@
 
 import numpy as np
 
-import uisrnn
+import bv_uisrnn
 
 
 SAVED_MODEL_NAME = 'saved_model.uisrnn'
@@ -42,7 +42,7 @@ def diarization_experiment(model_args, training_args, inference_args):
   test_sequences = test_data['test_sequences'].tolist()
   test_cluster_ids = test_data['test_cluster_ids'].tolist()
 
-  model = uisrnn.UISRNN(model_args)
+  model = bv_uisrnn.UISRNN(model_args)
 
   # training
   model.fit(train_sequence, train_cluster_id, training_args)
@@ -54,7 +54,7 @@ def diarization_experiment(model_args, training_args, inference_args):
   for (test_sequence, test_cluster_id) in zip(test_sequences, test_cluster_ids):
     predicted_cluster_id = model.predict(test_sequence, inference_args)
     predicted_cluster_ids.append(predicted_cluster_id)
-    accuracy = uisrnn.compute_sequence_match_accuracy(
+    accuracy = bv_uisrnn.compute_sequence_match_accuracy(
         test_cluster_id, predicted_cluster_id)
     test_record.append((accuracy, len(test_cluster_id)))
     print('Ground truth labels:')
@@ -63,7 +63,7 @@ def diarization_experiment(model_args, training_args, inference_args):
     print(predicted_cluster_id)
     print('-' * 80)
 
-  output_string = uisrnn.output_result(model_args, training_args, test_record)
+  output_string = bv_uisrnn.output_result(model_args, training_args, test_record)
 
   print('Finished diarization experiment')
   print(output_string)
@@ -71,7 +71,7 @@ def diarization_experiment(model_args, training_args, inference_args):
 
 def main():
   """The main function."""
-  model_args, training_args, inference_args = uisrnn.parse_arguments()
+  model_args, training_args, inference_args = bv_uisrnn.parse_arguments()
   diarization_experiment(model_args, training_args, inference_args)
 
 

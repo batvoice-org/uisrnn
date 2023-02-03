@@ -21,8 +21,8 @@ from torch import nn
 from torch import optim
 import torch.nn.functional as F
 
-from uisrnn import loss_func
-from uisrnn import utils
+from bv_uisrnn import loss_func
+from bv_uisrnn import utils
 
 _INITIAL_SIGMA2_VALUE = 0.1
 
@@ -404,7 +404,7 @@ class UISRNN:
         (one .npy file per speaker id, filename = cluster_id).
         Currently not compatible with situations where global uniqueness
         needs to be enforced
-        
+
       train_cluster_ids: Ground truth labels for train_sequences:
 
         Train_sequences is a list of the same size than train_data_repo,
@@ -442,7 +442,7 @@ class UISRNN:
     all_ids = set([lid for lidlist in train_cluster_ids for lid in lidlist])
     all_available_ids = set([x[0:-4] for x in os.listdir(train_data_repo)])
     self.fit_concatenated_lowmemory(train_data_repo, all_ids.intersection(all_available_ids), args, savefile)
-  
+
   def fit(self, train_sequences, train_cluster_ids, args):
     """Fit UISRNN model.
 

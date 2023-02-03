@@ -15,14 +15,16 @@
 
 import setuptools
 
-VERSION = '0.0.9'
+def get_version():
+    with open('VERSION', 'r') as f:
+        return f.readline().strip()
 
 with open('README.md', 'r') as file_object:
   LONG_DESCRIPTION = file_object.read()
 
 setuptools.setup(
-    name='uisrnn',
-    version=VERSION,
+    name='bv-uisrnn',
+    version=get_version(),
     author='Quan Wang',
     author_email='quanw@google.com',
     description='Unbounded Interleaved-State Recurrent Neural Network',
@@ -30,9 +32,18 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/google/uis-rnn',
     packages=setuptools.find_packages(),
+    include_package_data=True,
+    data_files=[
+        ('', ['VERSION']),
+    ],
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
     ],
+    install_requires=[
+      'numpy >= 1.15.1',
+      'scipy >= 1.1.0',
+      'torch >= 0.4.0',
+    ]
 )

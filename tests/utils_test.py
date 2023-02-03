@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from uisrnn import utils
+from bv_uisrnn import utils
 
 
 class TestEnforceClusterIdUniqueness(unittest.TestCase):

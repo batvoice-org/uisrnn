@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import torch
 
-import uisrnn
+import bv_uisrnn
 
 
 def _generate_random_sequence(cluster_id, label_to_center, sigma=0.1):
@@ -87,7 +87,7 @@ class TestIntegration(unittest.TestCase):
         test_cluster_id, label_to_center, sigma=0.01)
 
     # construct model
-    model_args, training_args, inference_args = uisrnn.parse_arguments()
+    model_args, training_args, inference_args = bv_uisrnn.parse_arguments()
     model_args.rnn_depth = 2
     model_args.rnn_hidden_size = 8
     model_args.observation_dim = 2
@@ -97,7 +97,7 @@ class TestIntegration(unittest.TestCase):
     training_args.enforce_cluster_id_uniqueness = False
     inference_args.test_iteration = 2
 
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
 
     # run training, and save the model
     model.fit(train_sequences, train_cluster_ids, training_args)
@@ -112,12 +112,12 @@ class TestIntegration(unittest.TestCase):
         3, 'Asserting the equivalence between'
         '\nGround truth: {}\nPredicted: {}'.format(
             test_cluster_id, predicted_label))
-    accuracy = uisrnn.compute_sequence_match_accuracy(
+    accuracy = bv_uisrnn.compute_sequence_match_accuracy(
         predicted_label, test_cluster_id)
     self.assertEqual(1.0, accuracy)
 
     # load new model
-    loaded_model = uisrnn.UISRNN(model_args)
+    loaded_model = bv_uisrnn.UISRNN(model_args)
     loaded_model.load(temp_file_path)
 
     # run testing with loaded model
@@ -128,7 +128,7 @@ class TestIntegration(unittest.TestCase):
         3, 'Asserting the equivalence between'
         '\nGround truth: {}\nPredicted: {}'.format(
             test_cluster_id, predicted_label))
-    accuracy = uisrnn.compute_sequence_match_accuracy(
+    accuracy = bv_uisrnn.compute_sequence_match_accuracy(
         predicted_label, test_cluster_id)
     self.assertEqual(1.0, accuracy)
 
@@ -148,7 +148,7 @@ class TestIntegration(unittest.TestCase):
         3, 'Asserting the equivalence between'
         '\nGround truth: {}\nPredicted: {}'.format(
             test_cluster_id, predicted_label))
-    accuracy = uisrnn.compute_sequence_match_accuracy(
+    accuracy = bv_uisrnn.compute_sequence_match_accuracy(
         predicted_label, test_cluster_id)
     self.assertEqual(1.0, accuracy)
 

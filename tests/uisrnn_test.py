@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import uisrnn
+import bv_uisrnn
 
 
 class TestUISRNN(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestUISRNN(unittest.TestCase):
 
     Training data have already been concatenated.
     """
-    model_args, training_args, inference_args = uisrnn.parse_arguments()
+    model_args, training_args, inference_args = bv_uisrnn.parse_arguments()
     model_args.rnn_depth = 1
     model_args.rnn_hidden_size = 8
     model_args.observation_dim = 16
@@ -40,7 +40,7 @@ class TestUISRNN(unittest.TestCase):
     train_sequence = np.random.rand(1000, model_args.observation_dim)
     train_cluster_id = np.array(['A'] * 1000)
 
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
 
     # training
     model.fit(train_sequence, train_cluster_id, training_args)
@@ -65,7 +65,7 @@ class TestUISRNN(unittest.TestCase):
 
     Training data are not concatenated.
     """
-    model_args, training_args, inference_args = uisrnn.parse_arguments()
+    model_args, training_args, inference_args = bv_uisrnn.parse_arguments()
     model_args.rnn_depth = 1
     model_args.rnn_hidden_size = 8
     model_args.observation_dim = 16
@@ -83,7 +83,7 @@ class TestUISRNN(unittest.TestCase):
         np.array(['A'] * 200),
         np.array(['A'] * 300),]
 
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
 
     # training
     model.fit(train_sequences, train_cluster_ids, training_args)
@@ -95,7 +95,7 @@ class TestUISRNN(unittest.TestCase):
 
   def test_fit_with_wrong_dim(self):
     """Training data has wrong dimension."""
-    model_args, training_args, _ = uisrnn.parse_arguments()
+    model_args, training_args, _ = bv_uisrnn.parse_arguments()
     model_args.rnn_depth = 1
     model_args.rnn_hidden_size = 8
     model_args.observation_dim = 16
@@ -106,7 +106,7 @@ class TestUISRNN(unittest.TestCase):
     train_sequence = np.random.rand(1000, 18)
     train_cluster_id = np.array(['A'] * 1000)
 
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
 
     # training
     with self.assertRaises(ValueError):
@@ -114,7 +114,7 @@ class TestUISRNN(unittest.TestCase):
 
   def test_predict_with_wrong_dim(self):
     """Testing data has wrong dimension."""
-    model_args, training_args, inference_args = uisrnn.parse_arguments()
+    model_args, training_args, inference_args = bv_uisrnn.parse_arguments()
     model_args.rnn_depth = 1
     model_args.rnn_hidden_size = 8
     model_args.observation_dim = 16
@@ -125,7 +125,7 @@ class TestUISRNN(unittest.TestCase):
     train_sequence = np.random.rand(1000, model_args.observation_dim)
     train_cluster_id = np.array(['A'] * 1000)
 
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
 
     # training
     model.fit(train_sequence, train_cluster_id, training_args)
@@ -137,11 +137,11 @@ class TestUISRNN(unittest.TestCase):
 
   def test_save_and_load(self):
     """Save model and load it."""
-    model_args, _, _ = uisrnn.parse_arguments()
+    model_args, _, _ = bv_uisrnn.parse_arguments()
     model_args.observation_dim = 16
     model_args.transition_bias = 0.5
     model_args.sigma2 = 0.05
-    model = uisrnn.UISRNN(model_args)
+    model = bv_uisrnn.UISRNN(model_args)
     temp_file_path = tempfile.mktemp()
     model.save(temp_file_path)
     model.load(temp_file_path)
