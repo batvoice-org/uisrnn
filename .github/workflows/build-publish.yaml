@@ -6,26 +6,9 @@ on:
 jobs:
   private-python-package:
     name: Private python package
-    runs-on: ['self-hosted', 'default']
+    runs-on: ["self-hosted", "default"]
     steps:
-      - name: Configure environment variables
-        id: init
-        run: |
-          echo "::add-mask::$BATVOICE_PYPI_SERVER_URL"
-          echo "BATVOICE_PYPI_SERVER_URL=$BATVOICE_PYPI_SERVER_URL" >> $GITHUB_OUTPUT
-          echo "::add-mask::$BATVOICE_PYPI_SERVER_HOST"
-          echo "BATVOICE_PYPI_SERVER_HOST=$BATVOICE_PYPI_SERVER_HOST" >> $GITHUB_OUTPUT
-          echo "::add-mask::$BATVOICE_PYPI_SERVER_USERNAME"
-          echo "BATVOICE_PYPI_SERVER_USERNAME=$BATVOICE_PYPI_SERVER_USERNAME" >> $GITHUB_OUTPUT
-          echo "::add-mask::$BATVOICE_PYPI_SERVER_PASSWORD"
-          echo "BATVOICE_PYPI_SERVER_PASSWORD=$BATVOICE_PYPI_SERVER_PASSWORD" >> $GITHUB_OUTPUT
-      - uses: actions/checkout@v3
       - name: Private python package
-        uses: batvoice-org/github-action-private-python-package@main
+        uses: batvoice-org/github-actions-private-python-package@main
         with:
           package-name: bv-uisrnn
-        env:
-          BATVOICE_PYPI_SERVER_URL: ${{ steps.init.outputs.BATVOICE_PYPI_SERVER_URL }}
-          BATVOICE_PYPI_SERVER_HOST: ${{ steps.init.outputs.BATVOICE_PYPI_SERVER_HOST }}
-          BATVOICE_PYPI_SERVER_USERNAME: ${{ steps.init.outputs.BATVOICE_PYPI_SERVER_USERNAME }}
-          BATVOICE_PYPI_SERVER_PASSWORD: ${{ steps.init.outputs.BATVOICE_PYPI_SERVER_PASSWORD }}
